@@ -1,0 +1,20 @@
+{
+  "name": "Panel Blast",
+  "short_name": "PanelBlast",
+  "description": "パネルでポン風パズルゲーム — 連鎖・対戦・スコアアタック",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07071A",
+  "theme_color": "#5AC8FA",
+  "lang": "ja",
+  "categories": ["games"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
