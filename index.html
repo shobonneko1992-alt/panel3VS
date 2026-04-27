@@ -1373,6 +1373,7 @@ function PanelBlast() {
         setOjamaQueue(0);
         cpuTopRowRef.current = ROWS - START_ROWS;
         setPlayerWon(false);
+        setShowPeek(false);
         setOpponentInfo({ score: 0, over: false, ojama: 0, topRow: ROWS - START_ROWS });
         setBattleTimeLeft(battleTimeLimit > 0 ? battleTimeLimit : 0);
         setMyCeilingCount(0);
@@ -1550,6 +1551,7 @@ function PanelBlast() {
         setOjamaQueue(0);
         cpuTopRowRef.current = ROWS - START_ROWS;
         setPlayerWon(false);
+        setShowPeek(false);
         setOpponentInfo({ score: 0, over: false, ojama: 0, topRow: ROWS - START_ROWS });
         setBattlePhase('connected');
         battlePhaseRef.current = 'connected';
@@ -1652,6 +1654,10 @@ function PanelBlast() {
     const leaveBattle = useCallback(() => {
         if (cpuTimerRef.current) { clearInterval(cpuTimerRef.current); cpuTimerRef.current = null; }
         if (ojamaDropTimerRef.current) { clearInterval(ojamaDropTimerRef.current); ojamaDropTimerRef.current = null; }
+        setPlayerWon(false);
+        setShowPeek(false);
+        setOpponentInfo({ score: 0, over: false, ojama: 0, topRow: ROWS });
+        cpuTopRowRef.current = ROWS;
         setBattleMode(null);
         destroyPeer();
         setBattlePhase('off');
