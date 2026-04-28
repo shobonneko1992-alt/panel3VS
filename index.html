@@ -2622,52 +2622,51 @@ battlePhase === "cpu-select" && (React.createElement(React.Fragment, null,
                 })() }),
                 ...[0.33, 0.66].map((p, i) => React.createElement("div", { key: i, style: { position: 'absolute', left: 0, bottom: (p * 100) + '%', width: '100%', height: 1, background: 'rgba(255,255,255,0.2)' } }))
             ),
-            showPeek && (() => {
-                // CPU: topRowから下をランダムで生成。P2P: 受信グリッドを使用
-                const MINI = 4;
-                let peekGrid;
-                // CPU・P2P両方とも opponentInfo.topRow から直接生成（常にゲージと一致）
-                {
-                    const topRow = opponentInfo.topRow != null ? opponentInfo.topRow : ROWS;
-                    peekGrid = Array.from({ length: ROWS }, (_, r) => {
-                        if (r < topRow) return Array(COLS).fill(null);
-                        return Array.from({ length: COLS }, (_, c) => {
-                            const seed = (r * 7 + c * 13 + Math.floor(topRow * 3)) % 6;
-                            if (seed === 0) return 'ojama';
-                            return COLORS[((r - topRow) * 4 + c * 3 + seed) % COLORS.length];
-                        });
+showPeek && (() => {
+                // ゲージと同じ高さ(100px)でピークを描画 → 最上段が視覚的に一致
+                const GAUGE_H = 100;
+                const CELL_H = GAUGE_H / ROWS;          // 1行あたりの高さ (px)
+                const CELL_W = Math.floor(CELL_H * 0.9); // 横幅はやや小さく
+                const topRow = opponentInfo.topRow != null ? opponentInfo.topRow : ROWS;
+                const peekGrid = Array.from({ length: ROWS }, (_, r) => {
+                    if (r < topRow) return Array(COLS).fill(null);
+                    return Array.from({ length: COLS }, (_, c) => {
+                        const seed = (r * 7 + c * 13 + Math.floor(topRow * 3)) % 6;
+                        if (seed === 0) return 'ojama';
+                        return COLORS[((r - topRow) * 4 + c * 3 + seed) % COLORS.length];
                     });
-                }
+                });
                 return React.createElement("div", {
                     style: {
-                        position: 'fixed', top: 70, right: 8,
-                        background: 'rgba(0,0,20,0.85)',
+                        // ゲージの左隣に隙間なく配置
+                        width: COLS * CELL_W + 2,
+                        height: GAUGE_H,
+                        background: 'rgba(0,0,10,0.75)',
                         border: '1px solid #5AC8FA44',
-                        borderRadius: 6,
-                        padding: 3,
-                        boxShadow: '0 0 10px #5AC8FA33',
-                        zIndex: 60,
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${COLS}, ${CELL_W}px)`,
+                        gridTemplateRows: `repeat(${ROWS}, ${CELL_H}px)`,
+                        gap: 0,
                         pointerEvents: 'none',
                     }
                 },
-                    React.createElement("div", { style: { fontSize: 6, color: '#5AC8FA', letterSpacing: 1, textAlign: 'center', marginBottom: 2, whiteSpace: 'nowrap' } }, "\u30D4ーク"),
-                    React.createElement("div", { style: { display: 'grid', gridTemplateColumns: `repeat(${COLS}, ${MINI}px)`, gap: 1 } },
-                        ...peekGrid.flatMap((row, r) =>
-                            row.map((cell, c) => {
-                                const pal = cell ? PALETTE[cell] : null;
-                                return React.createElement("div", {
-                                    key: r + ',' + c,
-                                    style: {
-                                        width: MINI, height: MINI,
-                                        borderRadius: 1,
-                                        background: pal
-                                            ? `linear-gradient(135deg,${pal.hi},${pal.mid})`
-                                            : 'rgba(255,255,255,0.04)',
-                                        boxShadow: pal ? `0 0 2px ${pal.glow}88` : 'none',
-                                    }
-                                });
-                            })
-                        )
+                    ...peekGrid.flatMap((row, r) =>
+                        row.map((cell, c) => {
+                            const pal = cell ? PALETTE[cell] : null;
+                            return React.createElement("div", {
+                                key: r + ',' + c,
+                                style: {
+                                    width: CELL_W,
+                                    height: CELL_H,
+                                    background: pal
+                                        ? `linear-gradient(135deg,${pal.hi},${pal.mid})`
+                                        : 'rgba(255,255,255,0.03)',
+                                    boxShadow: pal ? `inset 0 0 2px ${pal.glow}66` : 'none',
+                                }
+                            });
+                        })
                     )
                 );
             })()
@@ -2906,6 +2905,10 @@ const S = {
         position: 'fixed', top: 16, right: 8, zIndex: 50,
         background: 'rgba(0,0,0,0.25)',
         borderRadius: 8, padding: '4px',
+        display: 'flex',
+        flexDirection: 'row-reverse', // ゲージ右・ピーク左
+        alignItems: 'flex-start',
+        gap: 3,
     },
     opponentTitle: {
         fontSize: 7, letterSpacing: 0, color: '#FF2D55',
