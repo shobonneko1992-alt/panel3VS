@@ -1346,6 +1346,9 @@ function PanelBlast() {
             }
             if (data.type === 'gridSnapshot') {
                 setOpponentGrid(data.grid);
+                if (data.topRow != null) {
+                    setOpponentInfo(p => ({ ...p, topRow: data.topRow }));
+                }
             }
             if (data.type === 'start') {
                 // ホストから「試合開始」の合図（二重起動防止）
@@ -1686,7 +1689,8 @@ function PanelBlast() {
                 const compressed = gridRef.current.map(row =>
                     row.map(cell => cell ? cell.color : null)
                 );
-                c.send({ type: 'gridSnapshot', grid: compressed });
+                const snap_topRow = gridRef.current.findIndex(row => row.some(Boolean));
+                c.send({ type: 'gridSnapshot', grid: compressed, topRow: snap_topRow >= 0 ? snap_topRow : ROWS });
             }
         }, 1000);
         return () => clearInterval(id);
@@ -2622,20 +2626,17 @@ battlePhase === "cpu-select" && (React.createElement(React.Fragment, null,
                 // CPU: topRowから下をランダムで生成。P2P: 受信グリッドを使用
                 const MINI = 4;
                 let peekGrid;
-                if (battleMode === 'cpu') {
-                    // opponentInfo.topRowから直接生成（常に一致）
+                // CPU・P2P両方とも opponentInfo.topRow から直接生成（常にゲージと一致）
+                {
                     const topRow = opponentInfo.topRow != null ? opponentInfo.topRow : ROWS;
                     peekGrid = Array.from({ length: ROWS }, (_, r) => {
                         if (r < topRow) return Array(COLS).fill(null);
                         return Array.from({ length: COLS }, (_, c) => {
-                            // topRowをシードにして見た目を安定させる
                             const seed = (r * 7 + c * 13 + Math.floor(topRow * 3)) % 6;
                             if (seed === 0) return 'ojama';
                             return COLORS[((r - topRow) * 4 + c * 3 + seed) % COLORS.length];
                         });
                     });
-                } else {
-                    peekGrid = opponentGrid || Array.from({ length: ROWS }, () => Array(COLS).fill(null));
                 }
                 return React.createElement("div", {
                     style: {
