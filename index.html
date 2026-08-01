@@ -708,7 +708,7 @@ function PanelBlast() {
                             chainLvlRef.current = 0; fallingRef.current = false; cycleRunning.current = false;
                             setPhase('gameover'); phaseRef.current = 'gameover';
                         }
-                    }, 2000);
+                    }, 3000);
                 }
             }
             return;
@@ -784,9 +784,12 @@ function PanelBlast() {
                 for (const batch of pendingOjamaRef.current) {
                     if (batch.cpu) {
                         const ojamaRows = Math.ceil(batch.count / COLS);
+                        // 難易度が高いほど素早くパネルを消して防御する（被ダメージを軽減）
+                        const cpuDefenseRate = cpuDifficulty === 3 ? 0.5 : (cpuDifficulty === 2 ? 0.75 : 1.0);
+                        const effectiveRows = Math.max(1, Math.round(ojamaRows * cpuDefenseRate));
                         // setState外でgrid更新（副作用をsetState内に入れない）
                         const prevTopRow = cpuTopRowRef.current;
-                        const newTopRow = Math.max(0, prevTopRow - ojamaRows);
+                        const newTopRow = Math.max(0, prevTopRow - effectiveRows);
                         cpuTopRowRef.current = newTopRow;
                         if (newTopRow <= 0) {
                             // CPUがゲームオーバー
@@ -1060,7 +1063,7 @@ function PanelBlast() {
                                                         setPhase('gameover'); phaseRef.current = 'gameover';
                                                     }
                                                 }
-                                            }, 2000);
+                                            }, 3000);
                                         } return;
                                     }
                                     fallingRef.current = false;
@@ -1106,7 +1109,7 @@ function PanelBlast() {
                                                     setPhase('gameover'); phaseRef.current = 'gameover';
                                                 }
                                             }
-                                        }, 2000);
+                                        }, 3000);
                                     } return;
                                 }
                                 fallingRef.current = false;
@@ -1211,7 +1214,7 @@ function PanelBlast() {
                                     setPhase('gameover'); phaseRef.current = 'gameover';
                                 }
                             }
-                        }, 2000);
+                        }, 3000);
                     } return;
                 }
                 fallingRef.current = false;
@@ -1552,10 +1555,13 @@ function PanelBlast() {
         hostStartedRef.current = false;
         ojamaQueueRef.current = [];
         setOjamaQueue(0);
-        cpuTopRowRef.current = ROWS - START_ROWS;
+        // 難易度が高いほど開始時の天井余裕を多く持たせる（HARDが一撃で即終了しないように）
+        const cpuHeadroomBonus = diff === 3 ? 3 : (diff === 2 ? 1 : 0);
+        const cpuStartTopRow = Math.min(ROWS, (ROWS - START_ROWS) + cpuHeadroomBonus);
+        cpuTopRowRef.current = cpuStartTopRow;
         setPlayerWon(false);
         setShowPeek(false);
-        setOpponentInfo({ score: 0, over: false, ojama: 0, topRow: ROWS - START_ROWS });
+        setOpponentInfo({ score: 0, over: false, ojama: 0, topRow: cpuStartTopRow });
         setBattlePhase('connected');
         battlePhaseRef.current = 'connected';
         setBattleMode('cpu');
@@ -1572,9 +1578,9 @@ function PanelBlast() {
         setTimeout(() => {
             setCountdown(null);
             startGame();
-            // EASY: 22秒 500-1000点/分 / NORMAL: 17秒 1000-2000点/分 / HARD: 14秒 2000-3000点/分
+            // EASY: 22秒 500-1000点/分 / NORMAL: 17秒 1000-2000点/分 / HARD: 9.3秒 3000-4500点/分(最大連鎖4のまま・おじゃま率1.5倍)
             // [intervalMs, maxChain, ptsMin, ptsMax]
-            const configs = [[22000, 2, 185, 370], [17000, 3, 285, 570], [14000, 4, 465, 700]];
+            const configs = [[22000, 2, 185, 370], [17000, 3, 285, 570], [9300, 4, 698, 1050]];
             const [intervalMs, maxChainVal, ptsMin, ptsMax] = configs[diff - 1];
             let cpuScore = 0;
             cpuTimerRef.current = setInterval(() => {
@@ -1604,7 +1610,7 @@ function PanelBlast() {
                 if (battleSubMode !== 'score') {
                     // chain=1でも半段(3マス)送る。chain>=2は連鎖テーブルで段数決定
                     const ojamaRows = chain === 1 ? 0.5 : (CHAIN_OJAMA_ROWS[Math.min(chain, 13)] ?? 0);
-                    const ojamaRate = (diff === 2 ? 1.0 : 0.5) * (halfOjamaRef.current ? 0.5 : 1.0);
+                    const ojamaRate = (diff === 3 ? 1.5 : (diff === 2 ? 1.0 : 0.5)) * (halfOjamaRef.current ? 0.5 : 1.0);
                     const ojamaCount = Math.max(3, Math.round(ojamaRows * COLS * ojamaRate));
                     ojamaQueueRef.current.push({ count: ojamaCount, width: COLS, startCol: 0 });
                     setOjamaQueue(q => q + ojamaCount);
