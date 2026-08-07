@@ -385,6 +385,17 @@ function addOjamaToGrid(g, count, width = COLS, startCol = 0) {
 
 /** True when any cell in row 0 is occupied — triggers game over. */
 const isGameOver = (g) => g[0].some(Boolean);
+/**
+ * getScoreMessage(score)
+ * スコアアタック結果画面用の評価メッセージ
+ */
+function getScoreMessage(score) {
+    if (score < 1000) return { text: 'GOOD', color: '#5AC8FA', glow: '#5AC8FA' };
+    if (score < 2000) return { text: 'GREAT', color: '#30D158', glow: '#30D158' };
+    if (score < 5000) return { text: 'COOL', color: '#FFD60A', glow: '#FFD60A' };
+    if (score < 10000) return { text: 'EXCELLENT', color: '#FF9500', glow: '#FF9500' };
+    return { text: 'your GOD\uFF01', color: '#FF2D55', glow: '#FF2D55' };
+}
 /* ═══════════════════════════════════════════════════════════════
    §3  MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════ */
@@ -400,6 +411,8 @@ function PanelBlast() {
     const [battleSubMode, setBattleSubMode] = useState('ojama'); // 'ojama' | 'score'
     const [battleTimeLimit, setBattleTimeLimit] = useState(0); // 対戦制限時間(秒) 0=無制限
     const [battleTimeLeft, setBattleTimeLeft] = useState(0); // 残り秒数
+    const [showBattleResult, setShowBattleResult] = useState(false); // スコアアタック: TIME UP後「結果へ」ボタンを押すまでリザルトを隠す
+    const [showTimeUpFlash, setShowTimeUpFlash] = useState(false); // ゲームプレイ画面上に「TIME UP!」を一時表示するフラグ
     const [myCeilingCount, setMyCeilingCount] = useState(0);   // 自分の天井到達回数
     const [oppCeilingCount, setOppCeilingCount] = useState(0); // 相手の天井到達回数
     const [best, setBest] = useState(0); // time attack best
@@ -631,6 +644,8 @@ function PanelBlast() {
                     setCeilingHit(false); // 結果画面を表示するためリセット
                     setPhase('timeout');
                     phaseRef.current = 'timeout';
+                    setShowTimeUpFlash(true);
+                    setTimeout(() => setShowTimeUpFlash(false), 5000);
                     return 0;
                 }
                 return t - 1;
@@ -670,6 +685,8 @@ function PanelBlast() {
                     setBestTA(b => Math.max(b, scoreRef.current));
                     setPhase('timeout');
                     phaseRef.current = 'timeout';
+                    setShowTimeUpFlash(true);
+                    setTimeout(() => setShowTimeUpFlash(false), 5000);
                     return 0;
                 }
                 return t - 1;
@@ -692,7 +709,7 @@ function PanelBlast() {
         setRiseOffset(0);
         const newRow = nextRowRef.current;
         const ng = gridRef.current.map(r => [...r]);
-        if (ng[0].some(Boolean) && !flashingRef.current && !fallingRef.current && !cycleRunning.current && !(battlePhaseRef.current === 'connected' && (flashingRef.current || chainLvlRef.current > 0))) {
+        if (ng[0].some(Boolean) && !flashingRef.current && !fallingRef.current && !cycleRunning.current && chainLvlRef.current === 0) {
             if (!gameoverPendingRef.current) {
                 gameoverPendingRef.current = true;
                 // 即座にカウント＆演出（TRY AGAINで盤面リセットされても消えない）
@@ -704,6 +721,7 @@ function PanelBlast() {
                     setTimeout(() => {
                         gameoverPendingRef.current = false;
                         if (phaseRef.current !== 'play') return;
+                        if (chainLvlRef.current > 0 || cycleRunning.current) return; // 連鎖が再開していれば取り消し
                         if (gridRef.current[0].some(Boolean)) {
                             chainLvlRef.current = 0; fallingRef.current = false; cycleRunning.current = false;
                             setPhase('gameover'); phaseRef.current = 'gameover';
@@ -860,16 +878,18 @@ function PanelBlast() {
         const base = matches.size * 10;
         const bonus = (_a = CHAIN_BONUS[Math.min(chain, CHAIN_BONUS.length - 1)]) !== null && _a !== void 0 ? _a : 1800;
         const pts = base + bonus;
-        setScore(s => {
-            var _a;
-            const ns = s + pts;
-            setBest(b => Math.max(b, ns));
-            scoreRef.current = ns;
-            // スコアを対戦相手に送信
-            if ((_a = connRef.current) === null || _a === void 0 ? void 0 : _a.open)
-                connRef.current.send({ type: 'score', score: ns, topRow: gridRef.current.findIndex(row => row.some(Boolean)) });
-            return ns;
-        });
+        if (phaseRef.current === 'play') {
+            setScore(s => {
+                var _a;
+                const ns = s + pts;
+                setBest(b => Math.max(b, ns));
+                scoreRef.current = ns;
+                // スコアを対戦相手に送信
+                if ((_a = connRef.current) === null || _a === void 0 ? void 0 : _a.open)
+                    connRef.current.send({ type: 'score', score: ns, topRow: gridRef.current.findIndex(row => row.some(Boolean)) });
+                return ns;
+            });
+        }
         // ── Chain message (shown for chain ≥ 2) ──
         if (chain > 1) {
             setMaxChain(m => Math.max(m, chain));
@@ -1048,12 +1068,13 @@ function PanelBlast() {
                                     const didClean = cleanSmallGroups(cl);
                                     if (didClean) { gridRef.current = cl; setGrid(cl); }
                                     const final = didClean ? cl : next;
-                                    if (isGameOver(final) && !flashingRef.current && !cycleRunning.current && !(battlePhaseRef.current === 'connected' && (flashingRef.current || chainLvlRef.current > 0))) {
+                                    if (isGameOver(final) && !flashingRef.current && !cycleRunning.current && chainLvlRef.current === 0) {
                                         if (!gameoverPendingRef.current) {
                                             gameoverPendingRef.current = true;
                                             setTimeout(() => {
                                                 gameoverPendingRef.current = false;
                                                 if (phaseRef.current !== 'play') return;
+                                                if (chainLvlRef.current > 0 || cycleRunning.current) return; // 連鎖が再開していれば取り消し
                                                 if (gridRef.current[0].some(Boolean)) {
                                                     setMyCeilingCount(n => n + 1);
                                                     if (battlePhaseRef.current === 'connected' && battleTimeLimitRef.current > 0) {
@@ -1094,12 +1115,13 @@ function PanelBlast() {
                             if (moved) {
                                 setTimeout(tickFall, FALL_STEP_MS);
                             } else {
-                                if (isGameOver(next) && !flashingRef.current && !cycleRunning.current && !(battlePhaseRef.current === 'connected' && (flashingRef.current || chainLvlRef.current > 0))) {
+                                if (isGameOver(next) && !flashingRef.current && !cycleRunning.current && chainLvlRef.current === 0) {
                                     if (!gameoverPendingRef.current) {
                                         gameoverPendingRef.current = true;
                                         setTimeout(() => {
                                             gameoverPendingRef.current = false;
                                             if (phaseRef.current !== 'play') return;
+                                            if (chainLvlRef.current > 0 || cycleRunning.current) return; // 連鎖が再開していれば取り消し
                                             if (gridRef.current[0].some(Boolean)) {
                                                 setMyCeilingCount(n => n + 1);
                                                 if (battlePhaseRef.current === 'connected' && battleTimeLimitRef.current > 0) {
@@ -1199,12 +1221,13 @@ function PanelBlast() {
                 setTimeout(tickFallIdle, FALL_STEP_MS);
             }
             else {
-                if (isGameOver(next) && !flashingRef.current && !cycleRunning.current && !(battlePhaseRef.current === 'connected' && (flashingRef.current || chainLvlRef.current > 0))) {
+                if (isGameOver(next) && !flashingRef.current && !cycleRunning.current && chainLvlRef.current === 0) {
                     if (!gameoverPendingRef.current) {
                         gameoverPendingRef.current = true;
                         setTimeout(() => {
                             gameoverPendingRef.current = false;
                             if (phaseRef.current !== 'play') return;
+                            if (chainLvlRef.current > 0 || cycleRunning.current) return; // 連鎖が再開していれば取り消し
                             if (gridRef.current[0].some(Boolean)) {
                                 setMyCeilingCount(n => n + 1);
                                 if (battlePhaseRef.current === 'connected' && battleTimeLimitRef.current > 0) {
@@ -1251,6 +1274,7 @@ function PanelBlast() {
     /* ── §3f  Game Start / Reset ─────────────────────────────── */
     const startGame = useCallback(() => {
         gameoverPendingRef.current = false;
+        setShowTimeUpFlash(false);
         const ng = buildGrid();
         setGrid(ng);
         gridRef.current = ng;
@@ -1279,6 +1303,7 @@ function PanelBlast() {
     /* ── タイムアタック開始 ── */
     const startTimeAttack = useCallback(() => {
         gameoverPendingRef.current = false;
+        setShowTimeUpFlash(false);
         cycleRunning.current = false;
         const ng = buildGrid();
         setGrid(ng);
@@ -1382,6 +1407,8 @@ function PanelBlast() {
         setShowPeek(false);
         setOpponentInfo({ score: 0, over: false, ojama: 0, topRow: ROWS - START_ROWS });
         setBattleTimeLeft(battleTimeLimit > 0 ? battleTimeLimit : 0);
+        setShowBattleResult(false);
+        setShowTimeUpFlash(false);
         setMyCeilingCount(0);
         setOppCeilingCount(0);
         setCeilingHit(false);
@@ -1571,6 +1598,8 @@ function PanelBlast() {
         setOppCeilingCount(0);
         setCeilingHit(false);
         setBattleTimeLeft(battleTimeLimit > 0 ? battleTimeLimit : 0);
+        setShowBattleResult(false);
+        setShowTimeUpFlash(false);
         // ── 3・2・1 カウントダウン後にゲーム開始 ──
         setCountdown(3);
         setTimeout(() => setCountdown(2), 1000);
@@ -1578,9 +1607,9 @@ function PanelBlast() {
         setTimeout(() => {
             setCountdown(null);
             startGame();
-            // EASY: 22秒 500-1000点/分 / NORMAL: 17秒 1000-2000点/分 / HARD: 9.3秒 3000-4500点/分(最大連鎖4のまま・おじゃま率1.5倍)
+            // EASY: 22秒 500-1000点/分 / NORMAL: 17秒 1000-2000点/分 / HARD: 9.3秒 2000-4300点/分(最大連鎖4のまま・おじゃま率1.5倍)
             // [intervalMs, maxChain, ptsMin, ptsMax]
-            const configs = [[22000, 2, 185, 370], [17000, 3, 285, 570], [9300, 4, 698, 1050]];
+            const configs = [[22000, 2, 185, 370], [17000, 3, 285, 570], [9300, 4, 320, 690]];
             const [intervalMs, maxChainVal, ptsMin, ptsMax] = configs[diff - 1];
             let cpuScore = 0;
             cpuTimerRef.current = setInterval(() => {
@@ -1591,10 +1620,11 @@ function PanelBlast() {
                 const pts = Math.round(ptsMin + Math.random() * (ptsMax - ptsMin));
                 cpuScore += pts;
 
-                // 消去で一瞬空き増（+chain）→ 新パネル落下で埋まる（-(chain+1)）
-                // net = -1行: タイマーごとに1段ずつボードが埋まっていく
+                // 消去で一瞬空き増（+chain）→ 新パネル落下で埋まる（-(chain + drift)）
+                // drift: HARD=0(自滅しない・攻撃でしか追い詰められない) / NORMAL=1(従来通り) / EASY=2(自滅しやすい)
+                const driftAdjust = diff === 3 ? 0 : (diff === 2 ? 1 : 2);
                 const afterClear = Math.min(ROWS, cpuTopRowRef.current + chain);
-                const afterFill  = Math.max(0, afterClear - (chain + 1));
+                const afterFill  = Math.max(0, afterClear - (chain + driftAdjust));
                 const nextTopRow = afterFill;
 
                 if (nextTopRow <= 0) {
@@ -1609,9 +1639,12 @@ function PanelBlast() {
 
                 if (battleSubMode !== 'score') {
                     // chain=1でも半段(3マス)送る。chain>=2は連鎖テーブルで段数決定
-                    const ojamaRows = chain === 1 ? 0.5 : (CHAIN_OJAMA_ROWS[Math.min(chain, 13)] ?? 0);
+                    const rawOjamaRows = chain === 1 ? 0.5 : (CHAIN_OJAMA_ROWS[Math.min(chain, 13)] ?? 0);
                     const ojamaRate = (diff === 3 ? 1.5 : (diff === 2 ? 1.0 : 0.5)) * (halfOjamaRef.current ? 0.5 : 1.0);
-                    const ojamaCount = Math.max(3, Math.round(ojamaRows * COLS * ojamaRate));
+                    // 倍率をかけても「最大連鎖数(maxChainVal)」相当のサイズを超えないようキャップ
+                    const maxOjamaRows = CHAIN_OJAMA_ROWS[Math.min(maxChainVal, 13)] ?? 0;
+                    const ojamaRows = Math.min(rawOjamaRows * ojamaRate, maxOjamaRows);
+                    const ojamaCount = Math.max(3, Math.round(ojamaRows * COLS));
                     ojamaQueueRef.current.push({ count: ojamaCount, width: COLS, startCol: 0 });
                     setOjamaQueue(q => q + ojamaCount);
                     setOpponentInfo(p => ({ ...p, ojama: (p.ojama || 0) + ojamaCount }));
@@ -1795,11 +1828,11 @@ function PanelBlast() {
             phaseRef.current = 'gameover';
         }
     }, [opponentInfo.over, playerWon, phase]);
-    const overlayTitleColor = isBattle ? (youLose ? '#FF3B30' : '#30D158') : (phase === 'timeout' ? '#FF9500' : '#fff');
-    const overlayTitleGlow = isBattle ? (youLose ? '0 0 30px #FF3B30' : '0 0 30px #30D158') : (phase === 'timeout' ? '0 0 30px #FF9500' : '0 0 30px #5AC8FA');
+    const overlayTitleColor = isBattle ? (youLose ? '#FF3B30' : '#30D158') : '#fff';
+    const overlayTitleGlow = isBattle ? (youLose ? '0 0 30px #FF3B30' : '0 0 30px #30D158') : '0 0 30px #5AC8FA';
     const overlayTitleText = isBattle
-        ? (youLose ? '\uD83D\uDE35 YOU LOSE' : youWin ? '\uD83C\uDFC6 YOU WIN!' : 'GAME OVER')
-        : (phase === 'gameover' ? 'GAME OVER' : phase === 'timeout' ? '\u23F1 TIME UP!' : 'PANEL BLAST');
+        ? (phase === 'timeout' ? '' : youLose ? '\uD83D\uDE35 YOU LOSE' : youWin ? '\uD83C\uDFC6 YOU WIN!' : 'GAME OVER')
+        : (phase === 'gameover' ? 'GAME OVER' : phase === 'timeout' ? '' : 'PANEL BLAST');
     const cpuDiffLabel = ['EASY', 'NORMAL', 'HARD'][cpuDifficulty - 1] || 'NORMAL';
     return (React.createElement("div", { style: S.page },
         React.createElement("style", null, KEYFRAMES),
@@ -2248,6 +2281,22 @@ function PanelBlast() {
                         "+",
                         chainMsg.pts,
                         " pts"))),
+                showTimeUpFlash && React.createElement("div", {
+                    style: {
+                        position: 'absolute', inset: 0, zIndex: 50,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        pointerEvents: 'none', background: 'rgba(0,0,20,0.35)', padding: '0 6px', boxSizing: 'border-box',
+                    }
+                },
+                    React.createElement("div", {
+                        className: 'time-up-flash',
+                        style: {
+                            fontSize: `clamp(18px, 9vw, ${Math.round(CELL * 1.1)}px)`, fontWeight: 900, letterSpacing: 2,
+                            whiteSpace: 'nowrap', textAlign: 'center', maxWidth: '100%',
+                            color: '#FF9500', textShadow: '0 0 30px #FF9500, 0 0 60px #FF3B30, 0 2px 0 rgba(0,0,0,0.6)',
+                        }
+                    }, "\u23F0 TIME UP!")
+                ),
         
             showRecord && React.createElement("div", {
                 style: {
@@ -2339,12 +2388,20 @@ function PanelBlast() {
                     }, "閉じる")
                 )
             ),
-        phase !== "play" && phase !== "countdown" && (React.createElement("div", { style: S.overlay },
+        phase !== "play" && phase !== "countdown" && !showTimeUpFlash && (React.createElement("div", { style: S.overlay },
                     React.createElement("div", { style: S.overlayCard },
                         React.createElement("div", { style: { ...S.overlayTitle, color: overlayTitleColor, textShadow: overlayTitleGlow } }, overlayTitleText),
                         youLose && loseCount > 0 && React.createElement("div", { style: { fontSize: 13, color: '#FF6B6B', letterSpacing: 2, marginBottom: 6 } },
                             "\u2620 敗北 ", loseCount, " 回"),
-                        isCpuBattle && battleSubMode === 'score' && battleTimeLimit > 0 && phase === 'timeout' &&
+                        isCpuBattle && battleSubMode === 'score' && battleTimeLimit > 0 && phase === 'timeout' && !showBattleResult &&
+                            React.createElement("button", {
+                                style: { marginTop: 4, marginBottom: 4, padding: '12px 32px', borderRadius: 24, border: 'none', cursor: 'pointer',
+                                    background: 'linear-gradient(135deg,#5AC8FA,#0A84FF)', color: '#fff', fontSize: 15, fontWeight: 800, letterSpacing: 2 },
+                                onClick: () => setShowBattleResult(true),
+                                onMouseEnter: (e) => { e.currentTarget.style.filter = "brightness(1.2)"; },
+                                onMouseLeave: (e) => { e.currentTarget.style.filter = "brightness(1)"; }
+                            }, "\u7D50\u679C\u3078 \u25B6"),
+                        isCpuBattle && battleSubMode === 'score' && battleTimeLimit > 0 && phase === 'timeout' && showBattleResult &&
                             React.createElement(React.Fragment, null,
                                 React.createElement("div", { style: { fontSize: 22, fontWeight: 900, letterSpacing: 4, marginBottom: 6,
                                     color: score > opponentInfo.score ? "#30D158" : score < opponentInfo.score ? "#FF3B30" : "#FFD60A",
@@ -2354,13 +2411,20 @@ function PanelBlast() {
                                 React.createElement("div", { style: { display: "flex", gap: 16, justifyContent: "center", marginBottom: 8 } },
                                     React.createElement("div", { style: { textAlign: "center" } },
                                         React.createElement("div", { style: { fontSize: 10, color: "#5AC8FA" } }, "YOU"),
-                                        React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#FFD60A" } }, String(score).padStart(7,'0'))),
+                                        React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#FFD60A" } }, String(score))),
                                     React.createElement("div", { style: { fontSize: 18, alignSelf: "center", color: "#666" } }, "vs"),
                                     React.createElement("div", { style: { textAlign: "center" } },
                                         React.createElement("div", { style: { fontSize: 10, color: "#FF9500" } }, "CPU"),
-                                        React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#5AC8FA" } }, String(opponentInfo.score).padStart(7,'0'))))),
+                                        React.createElement("div", { style: { fontSize: 22, fontWeight: 900, color: "#5AC8FA" } }, String(opponentInfo.score))))),
                         !isCpuBattle && !isBattle && (phase === 'gameover' || phase === 'timeout') && React.createElement(React.Fragment, null,
-                            React.createElement("div", { style: S.overlayScore }, String(score).padStart(7, "0")),
+                            phase === 'timeout' && mode === 'timeattack' && (() => {
+                                const msg = getScoreMessage(score);
+                                return React.createElement("div", { style: {
+                                    fontSize: 24, fontWeight: 900, letterSpacing: 3, marginBottom: 6,
+                                    color: msg.color, textShadow: `0 0 24px ${msg.glow}`,
+                                } }, msg.text);
+                            })(),
+                            React.createElement("div", { style: S.overlayScore }, String(score)),
                             phase === 'timeout' && bestTA > 0 && score >= bestTA && React.createElement("div", { style: S.overlayNewBest }, "\uD83C\uDFC6 New Best!"),
                             phase === 'timeout' && mode === 'timeattack' && React.createElement(React.Fragment, null,
                                 // 保存確認UI
@@ -2368,7 +2432,7 @@ function PanelBlast() {
                                     React.createElement("button", {
                                         style: { padding: '8px 20px', borderRadius: 20, border: 'none', cursor: 'pointer',
                                             background: 'linear-gradient(135deg,#30D158,#00A86B)', color: '#fff',
-                                            fontSize: 13, fontWeight: 700, letterSpacing: 1 },
+                                            fontSize: 13, fontWeight: 700, letterSpacing: 1, whiteSpace: 'nowrap' },
                                         onClick: () => {
                                             setScoreHistory(prev => {
                                                 const entry = {
@@ -2385,7 +2449,7 @@ function PanelBlast() {
                                     React.createElement("button", {
                                         style: { padding: '8px 20px', borderRadius: 20, border: 'none', cursor: 'pointer',
                                             background: 'rgba(255,255,255,0.08)', color: '#888',
-                                            fontSize: 13, fontWeight: 700, letterSpacing: 1 },
+                                            fontSize: 13, fontWeight: 700, letterSpacing: 1, whiteSpace: 'nowrap' },
                                         onClick: () => setShowSaveConfirm(true)
                                     }, "スキップ")
                                 ),
@@ -2415,7 +2479,7 @@ function PanelBlast() {
                         !isBattle && React.createElement("div", { style: S.overlayHint },
                             isCpuBattle ? (cpuDiffLabel + " CPU\u6226 " + (phase === 'gameover' ? "\u2014 \u30D6\u30ED\u30C3\u30AF\u304C\u5929\u4E95\u306B\uFF01" : ""))
                             : phase === "gameover" ? "Blocks reached the top!"
-                            : phase === "timeout" ? ("1\u5206\u9593\u30B9\u30B3\u30A2\u30A2\u30BF\u30C3\u30AF\u7D42\u4E86\uFF01\u30D9\u30B9\u30C8: " + bestTA.toLocaleString() + " pts")
+                            : phase === "timeout" ? ""
                             : ""),
                         phase === "start" && React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 10, marginTop: 8 } },
                             React.createElement("div", { style: { fontSize: 11, color: "#444477", letterSpacing: 2, marginBottom: 4 } }, "MODE SELECT"),
@@ -2425,7 +2489,15 @@ function PanelBlast() {
                         phase !== "start" && React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 8, marginTop: 8 } },
                 !isCpuBattle && isBattle && battleTimeLimit > 0 && phase === "timeout" && React.createElement(React.Fragment, null,
                             battleSubMode === 'score'
-                            ? React.createElement(React.Fragment, null,
+                            ? (!showBattleResult
+                                ? React.createElement("button", {
+                                    style: { marginTop: 4, marginBottom: 4, padding: '12px 32px', borderRadius: 24, border: 'none', cursor: 'pointer',
+                                        background: 'linear-gradient(135deg,#5AC8FA,#0A84FF)', color: '#fff', fontSize: 15, fontWeight: 800, letterSpacing: 2 },
+                                    onClick: () => setShowBattleResult(true),
+                                    onMouseEnter: (e) => { e.currentTarget.style.filter = "brightness(1.2)"; },
+                                    onMouseLeave: (e) => { e.currentTarget.style.filter = "brightness(1)"; }
+                                }, "\u7D50\u679C\u3078 \u25B6")
+                                : React.createElement(React.Fragment, null,
                                 React.createElement("div", { style: { fontSize: 22, fontWeight: 900, letterSpacing: 4, marginBottom: 6,
                                     color: score > (opponentInfo.finalScore ?? opponentInfo.score ?? 0) ? "#30D158" : score < (opponentInfo.finalScore ?? opponentInfo.score ?? 0) ? "#FF3B30" : "#FFD60A",
                                     textShadow: score > (opponentInfo.finalScore ?? opponentInfo.score ?? 0) ? "0 0 20px #30D158" : score < (opponentInfo.finalScore ?? opponentInfo.score ?? 0) ? "0 0 20px #FF3B30" : "0 0 20px #FFD60A" } },
@@ -2434,11 +2506,12 @@ function PanelBlast() {
                                 React.createElement("div", { style: { display: "flex", gap: 16, justifyContent: "center", marginBottom: 8 } },
                                     React.createElement("div", { style: { textAlign: "center" } },
                                         React.createElement("div", { style: { fontSize: 10, color: "#5AC8FA" } }, "YOU"),
-                                        React.createElement("div", { style: { fontSize: 24, fontWeight: 900, color: "#FFD60A" } }, String(score).padStart(7,'0'))),
+                                        React.createElement("div", { style: { fontSize: 24, fontWeight: 900, color: "#FFD60A" } }, String(score))),
                                     React.createElement("div", { style: { fontSize: 20, alignSelf: "center", color: "#666" } }, "vs"),
                                     React.createElement("div", { style: { textAlign: "center" } },
                                         React.createElement("div", { style: { fontSize: 10, color: "#FF9500" } }, "OPP"),
-                                        React.createElement("div", { style: { fontSize: 24, fontWeight: 900, color: "#5AC8FA" } }, String(opponentInfo.finalScore ?? opponentInfo.score ?? 0).padStart(7,'0')))))
+                                        React.createElement("div", { style: { fontSize: 24, fontWeight: 900, color: "#5AC8FA" } }, String(opponentInfo.finalScore ?? opponentInfo.score ?? 0)))))
+                            )
                             : React.createElement(React.Fragment, null,
                                 React.createElement("div", { style: { fontSize: 22, fontWeight: 900, letterSpacing: 4, marginBottom: 6,
                                     color: myCeilingCount < oppCeilingCount ? "#30D158" : myCeilingCount > oppCeilingCount ? "#FF3B30" : "#FFD60A",
@@ -2735,7 +2808,7 @@ function ScoreCard({ icon, label, value, color }) {
             icon,
             " ",
             label),
-        React.createElement("div", { style: { ...SC.val, color } }, String(value).padStart(7, "0"))));
+        React.createElement("div", { style: { ...SC.val, color } }, String(value))));
 }
 const SC = {
     card: { background: "#0D0D25", border: "1px solid #1E1E4A", borderRadius: 6, padding: "4px 10px", textAlign: "center", minWidth: 110 },
@@ -2997,6 +3070,18 @@ const KEYFRAMES = `
   }
   .chain-popup {
     animation: chainFloat 1.6s cubic-bezier(.22,1,.36,1) forwards;
+  }
+
+  /* ── TIME UP! バナー: 拡大しながら出現しパルス ── */
+  @keyframes timeUpPop {
+    0%   { opacity: 0; transform: scale(0.4); }
+    30%  { opacity: 1; transform: scale(1.15); }
+    45%  { opacity: 1; transform: scale(1); }
+    85%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.05); }
+  }
+  .time-up-flash {
+    animation: timeUpPop 5s cubic-bezier(.22,1,.36,1) forwards;
   }
 
   /* ── Burst particle: fly outward and fade ── */
