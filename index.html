@@ -60,8 +60,6 @@ if(p.length)Promise.all(p).then(function(){location.reload();},function(){});}ca
 .title-start:active{transform:scale(.95)}
 @keyframes tsUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes tsPulse{0%,100%{box-shadow:0 4px 18px rgba(10,132,255,.5),0 0 0 0 rgba(90,200,250,.6)}50%{box-shadow:0 4px 18px rgba(10,132,255,.5),0 0 0 12px rgba(90,200,250,0)}}
-.title-hint{font-size:12px;opacity:0;animation:tsFade2 .8s 2.2s ease-out forwards}
-@keyframes tsFade2{to{opacity:.75}}
 @media (prefers-reduced-motion:reduce){.app-bg .ts-blob,.title-screen,.title-screen *,.title-screen *::after{animation-duration:.01s!important;animation-delay:0s!important;animation-iteration-count:1!important}}
 </style>
 </head>
@@ -72,7 +70,6 @@ if(p.length)Promise.all(p).then(function(){location.reload();},function(){});}ca
 <div class="title-main"><div class="tm-top"><span style="--i:0">P</span><span style="--i:1">A</span><span style="--i:2">N</span><span style="--i:3">E</span><span style="--i:4">L</span></div><div class="tm-bot"><span style="--i:5">B</span><span style="--i:6">L</span><span style="--i:7">A</span><span style="--i:8">S</span><span style="--i:9">T</span></div></div>
 <div class="title-sub">パネルブラスト</div>
 <button class="title-start" onclick="event.stopPropagation();closeTitle()">はじめる</button>
-<div class="title-hint">画面をタップしてもはじめられます</div>
 </div>
 <script>
 function closeTitle(){var el=document.getElementById("titleScreen");if(!el||el.classList.contains("out"))return;el.classList.add("out");setTimeout(function(){el.classList.add("hidden");},400);}
