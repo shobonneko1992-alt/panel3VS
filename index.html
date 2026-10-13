@@ -12,8 +12,61 @@
   <link rel="manifest" href="/manifest.json"/>
   <link rel="apple-touch-icon" href="/icon-192.png"/>
   <style>*{box-sizing:border-box;margin:0;padding:0}body{background:#07071A}#root{min-height:100vh}</style>
+<style>
+.title-screen{position:fixed;inset:0;z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:radial-gradient(120% 80% at 50% 0%,#14224a 0%,#07071A 60%),#07071A;background-size:100% 100%;color:#fff;transition:opacity .4s,transform .4s;cursor:pointer;padding:20px;box-sizing:border-box;overflow:hidden;font-family:'Courier New',monospace;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+.title-screen.out{opacity:0;transform:scale(1.06);pointer-events:none}
+.title-screen.hidden{display:none}
+.ts-blob{position:absolute;border-radius:50%;pointer-events:none;filter:blur(36px);opacity:.5}
+.ts-blob.b1{width:260px;height:260px;left:-80px;top:-50px;background:#0A84FF;animation:tsFloat 9s ease-in-out infinite}
+.ts-blob.b2{width:200px;height:200px;right:-60px;top:40%;background:#BF5AF2;animation:tsFloat 11s ease-in-out -3s infinite}
+.ts-blob.b3{width:280px;height:280px;left:15%;bottom:-130px;background:#5AC8FA;opacity:.35;animation:tsFloat 13s ease-in-out -6s infinite}
+@keyframes tsFloat{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(18px,-26px) scale(1.1)}}
+.ts-logo{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;width:132px;height:132px;padding:8px;border-radius:20px;background:rgba(255,255,255,.07);box-shadow:0 8px 30px rgba(0,0,0,.5),inset 0 0 0 1.5px rgba(90,200,250,.45);animation:tsPop .7s cubic-bezier(.2,1.4,.4,1) both}
+.ts-logo i{display:flex;align-items:center;justify-content:center;border-radius:8px;font-style:normal;font-size:20px;color:rgba(255,255,255,.92);text-shadow:0 1px 3px rgba(0,0,0,.45);opacity:0;animation:tsCell .45s calc(.3s + var(--n)*.08s) cubic-bezier(.2,1.5,.4,1) forwards}
+.ts-logo i.c-red{background:linear-gradient(150deg,#FF8099,#FF2D55 55%,#8B001A);box-shadow:0 0 12px #FF2D5599,inset 0 1px 0 rgba(255,255,255,.55)}
+.ts-logo i.c-blue{background:linear-gradient(150deg,#73C2FB,#0A84FF 55%,#003380);box-shadow:0 0 12px #0A84FF99,inset 0 1px 0 rgba(255,255,255,.55)}
+.ts-logo i.c-green{background:linear-gradient(150deg,#86EFAC,#30D158 55%,#14532D);box-shadow:0 0 12px #30D15899,inset 0 1px 0 rgba(255,255,255,.55)}
+.ts-logo i.c-yellow{background:linear-gradient(150deg,#FEF08A,#FFD60A 55%,#78450B);box-shadow:0 0 12px #FFD60A99,inset 0 1px 0 rgba(255,255,255,.55)}
+.ts-logo i.c-purple{background:linear-gradient(150deg,#DDA0F9,#BF5AF2 55%,#581C87);box-shadow:0 0 12px #BF5AF299,inset 0 1px 0 rgba(255,255,255,.55)}
+.ts-logo i.c-teal{background:linear-gradient(150deg,#BAE6FD,#5AC8FA 55%,#0C4A6E);box-shadow:0 0 12px #5AC8FA99,inset 0 1px 0 rgba(255,255,255,.55)}
+.ts-logo i:nth-child(4){animation:tsCell .45s .62s cubic-bezier(.2,1.5,.4,1) forwards,tsSwapR 3.2s 2.2s ease-in-out infinite}
+.ts-logo i:nth-child(5){animation:tsCell .45s .7s cubic-bezier(.2,1.5,.4,1) forwards,tsSwapL 3.2s 2.2s ease-in-out infinite}
+@keyframes tsPop{from{transform:scale(.5) rotate(-12deg);opacity:0}to{transform:none;opacity:1}}
+@keyframes tsCell{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:scale(1)}}
+@keyframes tsSwapR{0%,35%,100%{transform:none}15%{transform:translateX(calc(100% + 5px))}}
+@keyframes tsSwapL{0%,35%,100%{transform:none}15%{transform:translateX(calc(-100% - 5px))}}
+.title-main{display:flex;flex-direction:column;align-items:center;line-height:1;position:relative;overflow:hidden;padding:2px 10px}
+.tm-top,.tm-bot{display:flex}
+.title-main span{display:inline-block;font-weight:900;opacity:0;animation:tsRise .6s cubic-bezier(.2,1.2,.4,1) forwards;animation-delay:calc(.9s + var(--i)*.08s)}
+.tm-top span{font-size:54px;letter-spacing:6px;color:#fff;text-shadow:0 0 22px #5AC8FA}
+.tm-bot span{font-size:30px;letter-spacing:12px;margin-right:-12px;color:#FFD60A;text-shadow:0 0 14px #FFD60A88}
+.title-main::after{content:"";position:absolute;top:0;bottom:0;width:30%;left:-50%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-18deg);animation:tsShine 3.8s 2.2s ease-in-out infinite;pointer-events:none}
+@keyframes tsRise{from{opacity:0;transform:translateY(24px) scale(.8)}to{opacity:1;transform:none}}
+@keyframes tsShine{0%{left:-50%}45%,100%{left:130%}}
+.title-sub{font-size:13px;font-weight:700;letter-spacing:.42em;padding-left:.42em;color:#5AC8FA;opacity:0;animation:tsFade .8s 1.6s ease-out forwards}
+@keyframes tsFade{to{opacity:.9}}
+.title-start{margin-top:12px;background:linear-gradient(135deg,#5AC8FA,#0A84FF);color:#fff;border:0;font-family:inherit;font-size:16px;font-weight:900;letter-spacing:.2em;padding:14px 48px;border-radius:999px;box-shadow:0 4px 18px rgba(10,132,255,.5);opacity:0;animation:tsUp .6s 1.8s ease-out forwards,tsPulse 2.2s 2.5s ease-in-out infinite;cursor:pointer}
+.title-start:active{transform:scale(.95)}
+@keyframes tsUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes tsPulse{0%,100%{box-shadow:0 4px 18px rgba(10,132,255,.5),0 0 0 0 rgba(90,200,250,.6)}50%{box-shadow:0 4px 18px rgba(10,132,255,.5),0 0 0 12px rgba(90,200,250,0)}}
+.title-hint{font-size:12px;opacity:0;animation:tsFade2 .8s 2.2s ease-out forwards}
+@keyframes tsFade2{to{opacity:.75}}
+@media (prefers-reduced-motion:reduce){.title-screen,.title-screen *,.title-screen *::after{animation-duration:.01s!important;animation-delay:0s!important;animation-iteration-count:1!important}}
+</style>
 </head>
 <body>
+<div id="titleScreen" class="title-screen" onclick="closeTitle()">
+<div class="ts-blob b1"></div><div class="ts-blob b2"></div><div class="ts-blob b3"></div>
+<div class="ts-logo" aria-hidden="true"><i class="c-red" style="--n:0">◆</i><i class="c-blue" style="--n:1">●</i><i class="c-green" style="--n:2">▲</i><i class="c-yellow" style="--n:3">★</i><i class="c-purple" style="--n:4">■</i><i class="c-teal" style="--n:5">✦</i><i class="c-purple" style="--n:6">■</i><i class="c-red" style="--n:7">◆</i><i class="c-blue" style="--n:8">●</i></div>
+<div class="title-main"><div class="tm-top"><span style="--i:0">P</span><span style="--i:1">A</span><span style="--i:2">N</span><span style="--i:3">E</span><span style="--i:4">L</span></div><div class="tm-bot"><span style="--i:5">B</span><span style="--i:6">L</span><span style="--i:7">A</span><span style="--i:8">S</span><span style="--i:9">T</span></div></div>
+<div class="title-sub">パネルブラスト</div>
+<button class="title-start" onclick="event.stopPropagation();closeTitle()">はじめる</button>
+<div class="title-hint">画面をタップしてもはじめられます</div>
+</div>
+<script>
+function closeTitle(){var el=document.getElementById("titleScreen");if(!el||el.classList.contains("out"))return;el.classList.add("out");setTimeout(function(){el.classList.add("hidden");},400);}
+</script>
+
   <div id="root"><div style="color:#5AC8FA;text-align:center;padding-top:40vh;font-family:monospace;font-size:18px">⏳ Loading...</div></div>
   <script>
   window.onerror=function(m,s,l){var d=document.getElementById("root");if(d)d.innerHTML="<div style='color:#FF3B30;padding:20px;font-family:monospace;font-size:12px;word-break:break-all'>ERR:"+m+"<br>L:"+l+"<br><button onclick='location.reload()' style='padding:12px;background:#5AC8FA;border:none;border-radius:8px;color:#000'>reload</button></div>";return true;};
