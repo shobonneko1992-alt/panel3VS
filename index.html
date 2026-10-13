@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+<script>
+/* 古いキャッシュ(Service Worker)が残っていると新しい画面が出ないため、版が変わったら一度だけ掃除して再読み込みする */
+(function(){var V="2026-10-13-title";try{if(localStorage.getItem("pb_ver")===V)return;localStorage.setItem("pb_ver",V);var p=[];
+if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations)p.push(navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.map(function(r){return r.unregister();}));}).catch(function(){}));
+if(window.caches)p.push(caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}));
+if(p.length)Promise.all(p).then(function(){location.reload();},function(){});}catch(e){}})();
+</script>
+
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
   <title>Panel Blast</title>
@@ -3173,7 +3181,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(React.createElement(PanelBlast));
   </script>
   <script>
-  if("serviceWorker"in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){});});}
+  if("serviceWorker"in navigator){var hadCtl=!!navigator.serviceWorker.controller,reloaded=false;navigator.serviceWorker.addEventListener("controllerchange",function(){if(hadCtl&&!reloaded){reloaded=true;location.reload();}});window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js",{updateViaCache:"none"}).then(function(r){r.update();}).catch(function(){});});}
   window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__installPrompt=e;});
   </script>
 </body>
